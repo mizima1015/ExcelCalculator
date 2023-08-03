@@ -61,7 +61,12 @@ def login(request):
     print("----------------------------------접근--------")
     loginEmail = request.POST['loginEmail']
     loginPW = request.POST['loginPW']
-    user = User.objects.get(user_email=loginEmail)
+    # 로그인 시도시, User 모델에 접근 후, 사용자가 입력한 이메일로 탐색을 시도
+    # 예외 처리
+    try:
+        user = User.objects.get(user_email=loginEmail)
+    except:
+        return redirect("main_loginFail")
     if user.user_password == loginPW:
         print("매칭 성공")
         request.session['user_name'] = user.user_name # 사용자가 회원가입 시, 입력한 정보
@@ -71,6 +76,9 @@ def login(request):
         # 로그인 실패, 정보가 다름
         print("매칭 실패")
         return redirect("main_loginFail")
+
+def loginFail(request):
+    return render(request, 'main/loginFail.html')
 
 def verifyCode(request):
     return render(request, "main/verifyCode.html")
@@ -111,10 +119,25 @@ def verify(request):
 
 def result(request):
     if 'user_name' in request.session.keys():
-        return render(request, 'main/result.html') # 사용자의 세션 정보가 담겨져 있는 상태에서의 index.html
+        content = {}
+        # 새로운 객체에 저장
+        grade_calculate_dic = request.session['grade_calculate_dic']
+        # 각 내부 딕셔너리에 대해 'min' 및 'max' 값을 정수로 변환
+        for key in grade_calculate_dic:
+            grade_calculate_dic[key]['min'] = int(grade_calculate_dic[key]['min'])
+            grade_calculate_dic[key]['max'] = int(grade_calculate_dic[key]['max'])
+        content['grade_calculate_dic'] = grade_calculate_dic
+        content['email_domain_dic'] = dict(sorted(request.session['email_domain_dic'].items(), key=lambda item: item[1], reverse=True))
+
+
+        #기존 세션 삭제
+        del request.session['grade_calculate_dic']
+        del request.session['email_domain_dic']
+        return render(request, 'main/result.html', content) # 사용자의 세션 정보가 담겨져 있는 상태에서의 index.html
     else:
         return redirect('main_signin')
 
+    
 def logout(request):
     # 로그아웃의 개념 : 세션 정보를 삭제하는 것
     # 파이썬에서 객체를 지울 때 
